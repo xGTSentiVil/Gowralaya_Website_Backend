@@ -7,11 +7,31 @@ const contactSchema = z.object({
   message: z.string().min(1, 'Message is required').max(2000),
 });
 
+// Allowed frontend origins
+const ALLOWED_ORIGINS = [
+  'https://srigowralaya.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:5174',
+];
+
 // The company WhatsApp number (update this)
-const WHATSAPP_PHONE = process.env.WHATSAPP_PHONE || '919876543210';
-const CONTACT_EMAIL = process.env.CONTACT_EMAIL || 'info@srigowralaya.com';
+const WHATSAPP_PHONE = process.env.WHATSAPP_PHONE || '919841137507';
+const CONTACT_EMAIL = process.env.CONTACT_EMAIL || 'sreegowralaya@gmail.com';
+
+function getCorsHeaders(request: NextRequest) {
+  const origin = request.headers.get('origin') || '';
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Max-Age': '86400',
+  };
+}
 
 export async function POST(request: NextRequest) {
+  const corsHeaders = getCorsHeaders(request);
+
   try {
     const body = await request.json();
     
@@ -20,7 +40,7 @@ export async function POST(request: NextRequest) {
     if (!result.success) {
       return NextResponse.json(
         { error: result.error.issues[0].message },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -76,28 +96,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
-      success: true,
-      message: 'Your message has been received. Redirecting to WhatsApp...',
-      whatsappUrl,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'Your message has been received. Redirecting to WhatsApp...',
+        whatsappUrl,
+      },
+      { headers: corsHeaders }
+    );
   } catch (error) {
     console.error('Contact API error:', error);
     return NextResponse.json(
       { error: 'Internal server error. Please try again.' },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
 
 // Handle CORS preflight
-export async function OPTIONS() {
+export async function OPTIONS(request: NextRequest) {
+  const corsHeaders = getCorsHeaders(request);
   return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
+    status: 204,
+    headers: corsHeaders,
   });
 }
